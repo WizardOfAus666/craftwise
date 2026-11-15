@@ -7,7 +7,7 @@ import com.craftwise.tracker.GoalManager.CraftingGoal;
 import com.craftwise.tracker.SessionTrackerManager.CraftingSessionRecord;
 import com.craftwise.util.XPTable;
 import com.google.gson.Gson;
-import java.nio.file.Path;
+import net.runelite.client.util.Filepath;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -21,7 +21,8 @@ public class TrackerPersistenceTest
 	@Test
 	public void testSessionTrackerPersistenceAndMath() throws Exception
 	{
-		Path file = tempFolder.newFile("sessions.json").toPath();
+		Filepath file = Filepath.Unchecked.getRooted(tempFolder.getRoot().toPath())
+			.joinSegment("sessions.json");
 		SessionTrackerManager mgr = new SessionTrackerManager(file, new Gson());
 
 		CraftingSessionRecord rec = mgr.addSession(CraftingSessionRecord.builder()
@@ -60,7 +61,8 @@ public class TrackerPersistenceTest
 	@Test
 	public void testGoalManagerPersistenceAndProgress() throws Exception
 	{
-		Path file = tempFolder.newFile("goals.json").toPath();
+		Filepath file = Filepath.Unchecked.getRooted(tempFolder.getRoot().toPath())
+			.joinSegment("goals.json");
 		GoalManager gm = new GoalManager(file, new Gson());
 
 		CraftingGoal goal = gm.addGoal(CraftingGoal.builder()

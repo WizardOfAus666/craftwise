@@ -13,13 +13,13 @@ import com.craftwise.market.MarketWatcherService.ScanResult;
 import com.craftwise.model.CraftingResult;
 import com.craftwise.model.ItemPrice;
 import com.google.gson.Gson;
-import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import net.runelite.api.ItemID;
+import net.runelite.client.util.Filepath;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -59,9 +59,10 @@ public class BankMarketIntegrationTest
 	@Test
 	public void testNewlyProfitableOpportunityMatchedWithOwnedBankMaterials() throws Exception
 	{
-		Path wlFile = tempFolder.newFile("wl.json").toPath();
-		Path histFile = tempFolder.newFile("hist.json").toPath();
-		Path manFile = tempFolder.newFile("man.json").toPath();
+		Filepath root = Filepath.Unchecked.getRooted(tempFolder.getRoot().toPath());
+		Filepath wlFile = root.joinSegment("wl.json");
+		Filepath histFile = root.joinSegment("hist.json");
+		Filepath manFile = root.joinSegment("man.json");
 
 		WatchlistManager wl = new WatchlistManager(wlFile, histFile, new Gson());
 		MarketWatcherService watcher = new MarketWatcherService(wl);

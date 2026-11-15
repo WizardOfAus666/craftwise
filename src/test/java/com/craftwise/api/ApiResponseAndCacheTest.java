@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import net.runelite.api.ItemID;
+import net.runelite.client.util.Filepath;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -71,9 +72,11 @@ public class ApiResponseAndCacheTest
 	public void testPriceCacheDiskPersistenceAndStaleDetection() throws IOException
 	{
 		Path tempFile = Files.createTempFile("craftwise-cache-test", ".json");
+		Filepath cachePath = Filepath.Unchecked.getRooted(tempFile.getParent())
+			.joinSegment(tempFile.getFileName().toString());
 		try
 		{
-			PriceCache writer = new PriceCache(tempFile, new Gson());
+			PriceCache writer = new PriceCache(cachePath, new Gson());
 			writer.setStaleThresholdSec(60L);
 			Map<Integer, ItemPrice> map = Map.of(
 				ItemID.DIAMOND, ItemPrice.builder().itemId(ItemID.DIAMOND).highPrice(1900L).lowPrice(1850L).build()
@@ -83,7 +86,7 @@ public class ApiResponseAndCacheTest
 			Assert.assertFalse(writer.isStale(1030L));
 			Assert.assertTrue(writer.isStale(1200L));
 
-			PriceCache reader = new PriceCache(tempFile, new Gson());
+			PriceCache reader = new PriceCache(cachePath, new Gson());
 			Assert.assertFalse(reader.isEmpty());
 			Assert.assertEquals(Long.valueOf(1900L), reader.getPrice(ItemID.DIAMOND).getHighPrice());
 		}

@@ -5,10 +5,8 @@ import com.craftwise.model.ItemPrice;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
+import java.io.Reader;
 import java.lang.reflect.Type;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
@@ -18,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import net.runelite.client.RuneLite;
+import net.runelite.client.util.Filepath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +35,7 @@ public class PriceCache
 	private final Map<Integer, ItemPrice> livePrices = new ConcurrentHashMap<>();
 	private final Map<Integer, ItemPrice> mappingMetadata = new ConcurrentHashMap<>();
 	private final Map<String, CachedTimeseries> timeseriesCache = new ConcurrentHashMap<>();
-	private final Path cacheFile;
+	private volatile Filepath cacheFile;
 	private final Gson gson;
 
 	private volatile long lastPriceUpdateEpochSec = 0L;
@@ -65,13 +63,19 @@ public class PriceCache
 	@Inject
 	public PriceCache(Gson gson)
 	{
-		this(RuneLite.RUNELITE_DIR.toPath().resolve("craftwise").resolve("price-cache.json"), gson);
+		this(null, gson);
 	}
 
-	public PriceCache(Path cacheFile, Gson gson)
+	public PriceCache(Filepath cacheFile, Gson gson)
 	{
 		this.cacheFile = cacheFile;
 		this.gson = Objects.requireNonNull(gson, "Gson must be provided via RuneLite @Inject.");
+		loadFromDisk();
+	}
+
+	public synchronized void initializeStorage(Filepath cacheFile)
+	{
+		this.cacheFile = cacheFile;
 		loadFromDisk();
 	}
 
@@ -223,15 +227,15 @@ public class PriceCache
 
 	private void loadFromDisk()
 	{
-		if (cacheFile == null || !Files.exists(cacheFile))
+		Filepath file = this.cacheFile;
+		if (file == null || !file.exists())
 		{
 			return;
 		}
-		try
+		try (Reader reader = file.openReader())
 		{
-			String json = Files.readString(cacheFile, StandardCharsets.UTF_8);
 			Type type = new TypeToken<DiskCachePayload>() {}.getType();
-			DiskCachePayload payload = gson.fromJson(json, type);
+			DiskCachePayload payload = gson.fromJson(reader, type);
 			if (payload != null && payload.prices != null && !payload.prices.isEmpty())
 			{
 				long nowSec = Instant.now().getEpochSecond();
@@ -263,21 +267,22 @@ public class PriceCache
 
 	private void saveToDisk(long savedAtEpochSec, Map<Integer, ItemPrice> prices)
 	{
-		if (cacheFile == null)
+		Filepath file = this.cacheFile;
+		if (file == null)
 		{
 			return;
 		}
 		try
 		{
-			Path parent = cacheFile.getParent();
-			if (parent != null)
+			Filepath parent = file.getParent();
+			if (parent != null && !parent.exists())
 			{
-				Files.createDirectories(parent);
+				parent.createDirectories();
 			}
 			DiskCachePayload payload = new DiskCachePayload();
 			payload.savedAtEpochSec = savedAtEpochSec;
 			payload.prices = new HashMap<>(prices);
-			Files.writeString(cacheFile, gson.toJson(payload), StandardCharsets.UTF_8);
+			file.write(gson.toJson(payload));
 		}
 		catch (IOException ex)
 		{

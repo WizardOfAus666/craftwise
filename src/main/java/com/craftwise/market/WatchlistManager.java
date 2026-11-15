@@ -3,11 +3,8 @@ package com.craftwise.market;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
+import java.io.Reader;
 import java.lang.reflect.Type;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -20,6 +17,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.util.Filepath;
 
 /**
  * Persistent watchlist and historical profitability tracker saved locally under ~/.runelite/craftwise/.
@@ -85,8 +83,8 @@ public class WatchlistManager
 	{
 	}.getType();
 
-	private final Path watchlistFile;
-	private final Path historyFile;
+	private volatile Filepath watchlistFile;
+	private volatile Filepath historyFile;
 	private final Gson gson;
 	private final Set<String> watchedRecipeIds = Collections.synchronizedSet(new LinkedHashSet<>());
 	private final Map<Integer, WatchedItemRecord> watchedItems = Collections.synchronizedMap(new LinkedHashMap<>());
@@ -94,18 +92,21 @@ public class WatchlistManager
 
 	public WatchlistManager(Gson gson)
 	{
-		this(
-			Paths.get(System.getProperty("user.home"), ".runelite", "craftwise", "watchlist.json"),
-			Paths.get(System.getProperty("user.home"), ".runelite", "craftwise", "profit_history.json"),
-			gson
-		);
+		this(null, null, gson);
 	}
 
-	public WatchlistManager(Path watchlistFile, Path historyFile, Gson gson)
+	public WatchlistManager(Filepath watchlistFile, Filepath historyFile, Gson gson)
 	{
 		this.watchlistFile = watchlistFile;
 		this.historyFile = historyFile;
 		this.gson = gson.newBuilder().setPrettyPrinting().create();
+		load();
+	}
+
+	public synchronized void initializeStorage(Filepath watchlistFile, Filepath historyFile)
+	{
+		this.watchlistFile = watchlistFile;
+		this.historyFile = historyFile;
 		load();
 	}
 
@@ -115,12 +116,12 @@ public class WatchlistManager
 		watchedItems.clear();
 		historyByRecipeId.clear();
 
-		if (watchlistFile != null && Files.exists(watchlistFile))
+		Filepath wlFile = this.watchlistFile;
+		if (wlFile != null && wlFile.exists())
 		{
-			try
+			try (Reader reader = wlFile.openReader())
 			{
-				String json = new String(Files.readAllBytes(watchlistFile), StandardCharsets.UTF_8);
-				WatchlistState state = gson.fromJson(json, WatchlistState.class);
+				WatchlistState state = gson.fromJson(reader, WatchlistState.class);
 				if (state != null)
 				{
 					if (state.getRecipeIds() != null)
@@ -135,16 +136,16 @@ public class WatchlistManager
 			}
 			catch (Exception ex)
 			{
-				log.warn("Failed to load CraftWise watchlist from {}", watchlistFile, ex);
+				log.warn("Failed to load CraftWise watchlist from {}", wlFile, ex);
 			}
 		}
 
-		if (historyFile != null && Files.exists(historyFile))
+		Filepath histFile = this.historyFile;
+		if (histFile != null && histFile.exists())
 		{
-			try
+			try (Reader reader = histFile.openReader())
 			{
-				String json = new String(Files.readAllBytes(historyFile), StandardCharsets.UTF_8);
-				Map<String, List<ProfitHistoryPoint>> loaded = gson.fromJson(json, HISTORY_TYPE);
+				Map<String, List<ProfitHistoryPoint>> loaded = gson.fromJson(reader, HISTORY_TYPE);
 				if (loaded != null)
 				{
 					historyByRecipeId.putAll(loaded);
@@ -152,20 +153,21 @@ public class WatchlistManager
 			}
 			catch (Exception ex)
 			{
-				log.warn("Failed to load CraftWise profit history from {}", historyFile, ex);
+				log.warn("Failed to load CraftWise profit history from {}", histFile, ex);
 			}
 		}
 	}
 
 	public synchronized void saveWatchlist()
 	{
-		if (watchlistFile == null)
+		Filepath wlFile = this.watchlistFile;
+		if (wlFile == null)
 		{
 			return;
 		}
 		try
 		{
-			ensureParent(watchlistFile);
+			ensureParent(wlFile);
 			WatchlistState state;
 			synchronized (watchedRecipeIds)
 			{
@@ -174,42 +176,43 @@ public class WatchlistManager
 					state = new WatchlistState(new LinkedHashSet<>(watchedRecipeIds), new LinkedHashMap<>(watchedItems));
 				}
 			}
-			Files.write(watchlistFile, gson.toJson(state).getBytes(StandardCharsets.UTF_8));
+			wlFile.write(gson.toJson(state));
 		}
 		catch (IOException ex)
 		{
-			log.warn("Failed to save CraftWise watchlist to {}", watchlistFile, ex);
+			log.warn("Failed to save CraftWise watchlist to {}", wlFile, ex);
 		}
 	}
 
 	public synchronized void saveHistory()
 	{
-		if (historyFile == null)
+		Filepath histFile = this.historyFile;
+		if (histFile == null)
 		{
 			return;
 		}
 		try
 		{
-			ensureParent(historyFile);
+			ensureParent(histFile);
 			Map<String, List<ProfitHistoryPoint>> copy;
 			synchronized (historyByRecipeId)
 			{
 				copy = new LinkedHashMap<>(historyByRecipeId);
 			}
-			Files.write(historyFile, gson.toJson(copy).getBytes(StandardCharsets.UTF_8));
+			histFile.write(gson.toJson(copy));
 		}
 		catch (IOException ex)
 		{
-			log.warn("Failed to save CraftWise profit history to {}", historyFile, ex);
+			log.warn("Failed to save CraftWise profit history to {}", histFile, ex);
 		}
 	}
 
-	private static void ensureParent(Path file) throws IOException
+	private static void ensureParent(Filepath file) throws IOException
 	{
-		Path parent = file.getParent();
-		if (parent != null && !Files.exists(parent))
+		Filepath parent = file.getParent();
+		if (parent != null && !parent.exists())
 		{
-			Files.createDirectories(parent);
+			parent.createDirectories();
 		}
 	}
 

@@ -3,11 +3,8 @@ package com.craftwise.bank;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
+import java.io.Reader;
 import java.lang.reflect.Type;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -18,6 +15,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.util.Filepath;
 
 /**
  * Thread-safe snapshot of player-owned Crafting materials across Bank and Inventory,
@@ -118,7 +116,7 @@ public class OwnedMaterialSnapshot
 	{
 	}.getType();
 
-	private final Path manualFile;
+	private volatile Filepath manualFile;
 	private final Gson gson;
 	private volatile BankDataState bankDataState = BankDataState.UNAVAILABLE;
 	private volatile long lastBankScanEpochSec = 0L;
@@ -132,27 +130,33 @@ public class OwnedMaterialSnapshot
 
 	public OwnedMaterialSnapshot(Gson gson)
 	{
-		this(Paths.get(System.getProperty("user.home"), ".runelite", "craftwise", "manual_owned.json"), gson);
+		this(null, gson);
 	}
 
-	public OwnedMaterialSnapshot(Path manualFile, Gson gson)
+	public OwnedMaterialSnapshot(Filepath manualFile, Gson gson)
 	{
 		this.manualFile = manualFile;
 		this.gson = gson.newBuilder().setPrettyPrinting().create();
 		loadManualOverrides();
 	}
 
+	public synchronized void initializeStorage(Filepath manualFile)
+	{
+		this.manualFile = manualFile;
+		loadManualOverrides();
+	}
+
 	public synchronized void loadManualOverrides()
 	{
 		manualOwnedOverrides.clear();
-		if (manualFile == null || !Files.exists(manualFile))
+		Filepath file = this.manualFile;
+		if (file == null || !file.exists())
 		{
 			return;
 		}
-		try
+		try (Reader reader = file.openReader())
 		{
-			String json = new String(Files.readAllBytes(manualFile), StandardCharsets.UTF_8);
-			Map<Integer, Long> loaded = gson.fromJson(json, OVERRIDE_TYPE);
+			Map<Integer, Long> loaded = gson.fromJson(reader, OVERRIDE_TYPE);
 			if (loaded != null)
 			{
 				manualOwnedOverrides.putAll(loaded);
@@ -160,28 +164,29 @@ public class OwnedMaterialSnapshot
 		}
 		catch (Exception ex)
 		{
-			log.warn("Failed to load CraftWise manual owned quantities from {}", manualFile, ex);
+			log.warn("Failed to load CraftWise manual owned quantities from {}", file, ex);
 		}
 	}
 
 	public synchronized void saveManualOverrides()
 	{
-		if (manualFile == null)
+		Filepath file = this.manualFile;
+		if (file == null)
 		{
 			return;
 		}
 		try
 		{
-			Path parent = manualFile.getParent();
-			if (parent != null && !Files.exists(parent))
+			Filepath parent = file.getParent();
+			if (parent != null && !parent.exists())
 			{
-				Files.createDirectories(parent);
+				parent.createDirectories();
 			}
-			Files.write(manualFile, gson.toJson(new LinkedHashMap<>(manualOwnedOverrides)).getBytes(StandardCharsets.UTF_8));
+			file.write(gson.toJson(new LinkedHashMap<>(manualOwnedOverrides)));
 		}
 		catch (IOException ex)
 		{
-			log.warn("Failed to save CraftWise manual owned quantities to {}", manualFile, ex);
+			log.warn("Failed to save CraftWise manual owned quantities to {}", file, ex);
 		}
 	}
 

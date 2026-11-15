@@ -18,7 +18,6 @@ import com.craftwise.model.CraftingResult;
 import com.craftwise.model.ItemPrice;
 import com.google.gson.Gson;
 import java.lang.reflect.Proxy;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -27,6 +26,7 @@ import java.util.Map;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.ItemID;
+import net.runelite.client.util.Filepath;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -107,7 +107,8 @@ public class BankCraftingTest
 	@Test
 	public void testSnapshotLifecycleAndNotedSeparation() throws Exception
 	{
-		Path manualFile = tempFolder.newFile("manual_owned.json").toPath();
+		Filepath manualFile = Filepath.Unchecked.getRooted(tempFolder.getRoot().toPath())
+			.joinSegment("manual_owned.json");
 		OwnedMaterialSnapshot snapshot = new OwnedMaterialSnapshot(manualFile, new Gson());
 
 		// Initially unavailable; never assumes bank is empty
@@ -151,7 +152,8 @@ public class BankCraftingTest
 	@Test
 	public void testSingleMultiInputMultiOutputAndReusableTools() throws Exception
 	{
-		Path manualFile = tempFolder.newFile("manual_owned.json").toPath();
+		Filepath manualFile = Filepath.Unchecked.getRooted(tempFolder.getRoot().toPath())
+			.joinSegment("manual_owned.json");
 		OwnedMaterialSnapshot snapshot = new OwnedMaterialSnapshot(manualFile, new Gson());
 		Map<Integer, ItemPrice> prices = samplePrices();
 
@@ -182,7 +184,9 @@ public class BankCraftingTest
 		Assert.assertEquals(CoverageTier.PARTIAL, noChisel.getCoverageTier());
 
 		// Empty snapshot -> NOT_READY
-		OwnedMaterialSnapshot emptySnap = new OwnedMaterialSnapshot(tempFolder.newFile("empty_owned.json").toPath(), new Gson());
+		OwnedMaterialSnapshot emptySnap = new OwnedMaterialSnapshot(
+			Filepath.Unchecked.getRooted(tempFolder.getRoot().toPath()).joinSegment("empty_owned.json"),
+			new Gson());
 		BankRecipeMatch emptyMatch = BankCraftingCalculator.matchRecipe(
 			cutRuby, cutRubyRes, emptySnap.getSnapshotView(), 500L, false,
 			prices, Collections.emptyMap(), PriceCalculationMode.INSTANT_BUY_SELL, Collections.emptyMap());
@@ -240,7 +244,8 @@ public class BankCraftingTest
 	@Test
 	public void testMaterialValueTrainingComparisonAndShoppingOverride() throws Exception
 	{
-		Path manualFile = tempFolder.newFile("manual_owned.json").toPath();
+		Filepath manualFile = Filepath.Unchecked.getRooted(tempFolder.getRoot().toPath())
+			.joinSegment("manual_owned.json");
 		OwnedMaterialSnapshot snapshot = new OwnedMaterialSnapshot(manualFile, new Gson());
 		Map<Integer, ItemPrice> prices = samplePrices();
 

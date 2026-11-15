@@ -19,12 +19,12 @@ import com.craftwise.market.WatchlistManager.ProfitHistoryStats;
 import com.craftwise.model.CraftingResult;
 import com.craftwise.model.ItemPrice;
 import com.google.gson.Gson;
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import net.runelite.api.ItemID;
+import net.runelite.client.util.Filepath;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -70,8 +70,9 @@ public class MarketWatcherTest
 	@Test
 	public void testPriceIncreaseAndNewlyProfitableDetectionWithTax() throws Exception
 	{
-		Path wlFile = tempFolder.newFile("wl.json").toPath();
-		Path histFile = tempFolder.newFile("hist.json").toPath();
+		Filepath root = Filepath.Unchecked.getRooted(tempFolder.getRoot().toPath());
+		Filepath wlFile = root.joinSegment("wl.json");
+		Filepath histFile = root.joinSegment("hist.json");
 		WatchlistManager wl = new WatchlistManager(wlFile, histFile, new Gson());
 		wl.addWatchedRecipe("cut_ruby");
 		MarketWatcherService service = new MarketWatcherService(wl);
@@ -129,8 +130,9 @@ public class MarketWatcherTest
 	@Test
 	public void testDecliningWatchedAlertAndBreakEvenTransition() throws Exception
 	{
-		Path wlFile = tempFolder.newFile("wl2.json").toPath();
-		Path histFile = tempFolder.newFile("hist2.json").toPath();
+		Filepath root = Filepath.Unchecked.getRooted(tempFolder.getRoot().toPath());
+		Filepath wlFile = root.joinSegment("wl2.json");
+		Filepath histFile = root.joinSegment("hist2.json");
 		WatchlistManager wl = new WatchlistManager(wlFile, histFile, new Gson());
 		wl.addWatchedRecipe("cut_ruby");
 		MarketWatcherService service = new MarketWatcherService(wl);
@@ -177,8 +179,9 @@ public class MarketWatcherTest
 	@Test
 	public void testStaleMissingPricesAndUnverifiedRecipeFiltering() throws Exception
 	{
-		Path wlFile = tempFolder.newFile("wl3.json").toPath();
-		Path histFile = tempFolder.newFile("hist3.json").toPath();
+		Filepath root = Filepath.Unchecked.getRooted(tempFolder.getRoot().toPath());
+		Filepath wlFile = root.joinSegment("wl3.json");
+		Filepath histFile = root.joinSegment("hist3.json");
 		MarketWatcherService service = new MarketWatcherService(new WatchlistManager(wlFile, histFile, new Gson()));
 
 		// Missing price must report UNAVAILABLE and not 0 GP fake profit

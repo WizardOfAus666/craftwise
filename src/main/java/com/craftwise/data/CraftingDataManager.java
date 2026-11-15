@@ -65,6 +65,7 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.util.AsyncBufferedImage;
+import net.runelite.client.util.Filepath;
 import net.runelite.client.util.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -190,6 +191,42 @@ public class CraftingDataManager
 
 	public synchronized void startUp()
 	{
+		startUp(null);
+	}
+
+	public synchronized void startUp(Filepath pluginDirectory)
+	{
+		if (pluginDirectory != null)
+		{
+			try
+			{
+				if (!pluginDirectory.exists())
+				{
+					pluginDirectory.createDirectories();
+				}
+			}
+			catch (IOException ex)
+			{
+				log.warn("[CraftWise] Could not create plugin directory {}", pluginDirectory, ex);
+			}
+
+			if (wikiPriceClient != null && wikiPriceClient.getPriceCache() != null)
+			{
+				PriceCache cache = wikiPriceClient.getPriceCache();
+				cache.initializeStorage(pluginDirectory.joinSegment("price-cache.json"));
+				if (!cache.isEmpty())
+				{
+					this.currentPrices = cache.getPricesSnapshot(cache.isStale(Instant.now().getEpochSecond()));
+				}
+			}
+			sessionTrackerManager.initializeStorage(pluginDirectory.joinSegment("sessions.json"));
+			goalManager.initializeStorage(pluginDirectory.joinSegment("goals.json"));
+			watchlistManager.initializeStorage(
+				pluginDirectory.joinSegment("watchlist.json"),
+				pluginDirectory.joinSegment("profit_history.json")
+			);
+			ownedMaterialSnapshot.initializeStorage(pluginDirectory.joinSegment("manual_owned.json"));
+		}
 		syncFromConfig();
 		DataIntegrityChecker.IntegrityReport report = DataIntegrityChecker.check(CraftingDataRepository.getAllRecipes());
 		this.integrityWarnings = report.getWarnings();

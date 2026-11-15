@@ -84,7 +84,7 @@ public class CraftWisePlugin extends Plugin
 	{
 		log.info("[CraftWise] Starting CraftWise plugin...");
 		dataManager.setAlertDispatcher(this::handleMarketAlert);
-		dataManager.startUp();
+		dataManager.startUp(getPluginDirectory());
 		dataManager.scanContainersOnClientThread();
 
 		panel = new CraftWisePanel(dataManager);

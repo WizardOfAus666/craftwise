@@ -3,11 +3,8 @@ package com.craftwise.tracker;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
+import java.io.Reader;
 import java.lang.reflect.Type;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -17,6 +14,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.util.Filepath;
 
 /**
  * Phase 12: Crafting Session Tracker with local JSON persistence.
@@ -80,33 +78,39 @@ public class SessionTrackerManager
 	{
 	}.getType();
 
-	private final Path storageFile;
+	private volatile Filepath storageFile;
 	private final Gson gson;
 	private final List<CraftingSessionRecord> sessions = Collections.synchronizedList(new ArrayList<>());
 
 	public SessionTrackerManager(Gson gson)
 	{
-		this(Paths.get(System.getProperty("user.home"), ".runelite", "craftwise", "sessions.json"), gson);
+		this(null, gson);
 	}
 
-	public SessionTrackerManager(Path storageFile, Gson gson)
+	public SessionTrackerManager(Filepath storageFile, Gson gson)
 	{
 		this.storageFile = storageFile;
 		this.gson = gson.newBuilder().setPrettyPrinting().create();
 		load();
 	}
 
+	public synchronized void initializeStorage(Filepath storageFile)
+	{
+		this.storageFile = storageFile;
+		load();
+	}
+
 	public synchronized void load()
 	{
 		sessions.clear();
-		if (storageFile == null || !Files.exists(storageFile))
+		Filepath file = this.storageFile;
+		if (file == null || !file.exists())
 		{
 			return;
 		}
-		try
+		try (Reader reader = file.openReader())
 		{
-			String json = new String(Files.readAllBytes(storageFile), StandardCharsets.UTF_8);
-			List<CraftingSessionRecord> loaded = gson.fromJson(json, LIST_TYPE);
+			List<CraftingSessionRecord> loaded = gson.fromJson(reader, LIST_TYPE);
 			if (loaded != null)
 			{
 				sessions.addAll(loaded);
@@ -114,33 +118,34 @@ public class SessionTrackerManager
 		}
 		catch (Exception ex)
 		{
-			log.warn("Failed to load CraftWise sessions from {}", storageFile, ex);
+			log.warn("Failed to load CraftWise sessions from {}", file, ex);
 		}
 	}
 
 	public synchronized void save()
 	{
-		if (storageFile == null)
+		Filepath file = this.storageFile;
+		if (file == null)
 		{
 			return;
 		}
 		try
 		{
-			Path parent = storageFile.getParent();
-			if (parent != null && !Files.exists(parent))
+			Filepath parent = file.getParent();
+			if (parent != null && !parent.exists())
 			{
-				Files.createDirectories(parent);
+				parent.createDirectories();
 			}
 			List<CraftingSessionRecord> snapshot;
 			synchronized (sessions)
 			{
 				snapshot = new ArrayList<>(sessions);
 			}
-			Files.write(storageFile, gson.toJson(snapshot).getBytes(StandardCharsets.UTF_8));
+			file.write(gson.toJson(snapshot));
 		}
 		catch (IOException ex)
 		{
-			log.warn("Failed to save CraftWise sessions to {}", storageFile, ex);
+			log.warn("Failed to save CraftWise sessions to {}", file, ex);
 		}
 	}
 
