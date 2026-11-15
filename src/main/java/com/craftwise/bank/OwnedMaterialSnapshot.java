@@ -1,7 +1,6 @@
 package com.craftwise.bank;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -115,12 +114,12 @@ public class OwnedMaterialSnapshot
 		}
 	}
 
-	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static final Type OVERRIDE_TYPE = new TypeToken<Map<Integer, Long>>()
 	{
 	}.getType();
 
 	private final Path manualFile;
+	private final Gson gson;
 	private volatile BankDataState bankDataState = BankDataState.UNAVAILABLE;
 	private volatile long lastBankScanEpochSec = 0L;
 	private volatile long lastInventoryScanEpochSec = 0L;
@@ -131,14 +130,15 @@ public class OwnedMaterialSnapshot
 	private final Map<Integer, String> itemNames = new LinkedHashMap<>();
 	private final Map<Integer, Long> manualOwnedOverrides = new LinkedHashMap<>();
 
-	public OwnedMaterialSnapshot()
+	public OwnedMaterialSnapshot(Gson gson)
 	{
-		this(Paths.get(System.getProperty("user.home"), ".runelite", "craftwise", "manual_owned.json"));
+		this(Paths.get(System.getProperty("user.home"), ".runelite", "craftwise", "manual_owned.json"), gson);
 	}
 
-	public OwnedMaterialSnapshot(Path manualFile)
+	public OwnedMaterialSnapshot(Path manualFile, Gson gson)
 	{
 		this.manualFile = manualFile;
+		this.gson = gson.newBuilder().setPrettyPrinting().create();
 		loadManualOverrides();
 	}
 
@@ -152,7 +152,7 @@ public class OwnedMaterialSnapshot
 		try
 		{
 			String json = new String(Files.readAllBytes(manualFile), StandardCharsets.UTF_8);
-			Map<Integer, Long> loaded = GSON.fromJson(json, OVERRIDE_TYPE);
+			Map<Integer, Long> loaded = gson.fromJson(json, OVERRIDE_TYPE);
 			if (loaded != null)
 			{
 				manualOwnedOverrides.putAll(loaded);
@@ -177,7 +177,7 @@ public class OwnedMaterialSnapshot
 			{
 				Files.createDirectories(parent);
 			}
-			Files.write(manualFile, GSON.toJson(new LinkedHashMap<>(manualOwnedOverrides)).getBytes(StandardCharsets.UTF_8));
+			Files.write(manualFile, gson.toJson(new LinkedHashMap<>(manualOwnedOverrides)).getBytes(StandardCharsets.UTF_8));
 		}
 		catch (IOException ex)
 		{

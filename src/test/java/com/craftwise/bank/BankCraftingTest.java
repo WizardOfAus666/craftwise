@@ -16,6 +16,7 @@ import com.craftwise.data.CraftingDataRepository;
 import com.craftwise.data.CraftingRecipe;
 import com.craftwise.model.CraftingResult;
 import com.craftwise.model.ItemPrice;
+import com.google.gson.Gson;
 import java.lang.reflect.Proxy;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -107,7 +108,7 @@ public class BankCraftingTest
 	public void testSnapshotLifecycleAndNotedSeparation() throws Exception
 	{
 		Path manualFile = tempFolder.newFile("manual_owned.json").toPath();
-		OwnedMaterialSnapshot snapshot = new OwnedMaterialSnapshot(manualFile);
+		OwnedMaterialSnapshot snapshot = new OwnedMaterialSnapshot(manualFile, new Gson());
 
 		// Initially unavailable; never assumes bank is empty
 		Assert.assertEquals(BankDataState.UNAVAILABLE, snapshot.getSnapshotView().getBankDataState());
@@ -151,7 +152,7 @@ public class BankCraftingTest
 	public void testSingleMultiInputMultiOutputAndReusableTools() throws Exception
 	{
 		Path manualFile = tempFolder.newFile("manual_owned.json").toPath();
-		OwnedMaterialSnapshot snapshot = new OwnedMaterialSnapshot(manualFile);
+		OwnedMaterialSnapshot snapshot = new OwnedMaterialSnapshot(manualFile, new Gson());
 		Map<Integer, ItemPrice> prices = samplePrices();
 
 		Map<Integer, Long> bankMap = new HashMap<>();
@@ -181,7 +182,7 @@ public class BankCraftingTest
 		Assert.assertEquals(CoverageTier.PARTIAL, noChisel.getCoverageTier());
 
 		// Empty snapshot -> NOT_READY
-		OwnedMaterialSnapshot emptySnap = new OwnedMaterialSnapshot(tempFolder.newFile("empty_owned.json").toPath());
+		OwnedMaterialSnapshot emptySnap = new OwnedMaterialSnapshot(tempFolder.newFile("empty_owned.json").toPath(), new Gson());
 		BankRecipeMatch emptyMatch = BankCraftingCalculator.matchRecipe(
 			cutRuby, cutRubyRes, emptySnap.getSnapshotView(), 500L, false,
 			prices, Collections.emptyMap(), PriceCalculationMode.INSTANT_BUY_SELL, Collections.emptyMap());
@@ -240,7 +241,7 @@ public class BankCraftingTest
 	public void testMaterialValueTrainingComparisonAndShoppingOverride() throws Exception
 	{
 		Path manualFile = tempFolder.newFile("manual_owned.json").toPath();
-		OwnedMaterialSnapshot snapshot = new OwnedMaterialSnapshot(manualFile);
+		OwnedMaterialSnapshot snapshot = new OwnedMaterialSnapshot(manualFile, new Gson());
 		Map<Integer, ItemPrice> prices = samplePrices();
 
 		Map<Integer, Long> bankMap = new HashMap<>();
@@ -276,7 +277,7 @@ public class BankCraftingTest
 
 		// Shopping list with manual owned quantity override persisted
 		snapshot.setManualOwnedQuantity(ItemID.GOLD_BAR, "Gold bar", 100L);
-		OwnedMaterialSnapshot reloaded = new OwnedMaterialSnapshot(manualFile);
+		OwnedMaterialSnapshot reloaded = new OwnedMaterialSnapshot(manualFile, new Gson());
 		Assert.assertEquals(Long.valueOf(100L), reloaded.getManualOwnedOverrides().get(ItemID.GOLD_BAR));
 
 		CraftingRecipe sapBracelet = CraftingDataRepository.getById("sapphire_bracelet");

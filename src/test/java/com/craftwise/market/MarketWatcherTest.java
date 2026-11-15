@@ -18,6 +18,7 @@ import com.craftwise.market.WatchlistManager.ProfitHistoryPoint;
 import com.craftwise.market.WatchlistManager.ProfitHistoryStats;
 import com.craftwise.model.CraftingResult;
 import com.craftwise.model.ItemPrice;
+import com.google.gson.Gson;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
@@ -71,7 +72,7 @@ public class MarketWatcherTest
 	{
 		Path wlFile = tempFolder.newFile("wl.json").toPath();
 		Path histFile = tempFolder.newFile("hist.json").toPath();
-		WatchlistManager wl = new WatchlistManager(wlFile, histFile);
+		WatchlistManager wl = new WatchlistManager(wlFile, histFile, new Gson());
 		wl.addWatchedRecipe("cut_ruby");
 		MarketWatcherService service = new MarketWatcherService(wl);
 
@@ -130,7 +131,7 @@ public class MarketWatcherTest
 	{
 		Path wlFile = tempFolder.newFile("wl2.json").toPath();
 		Path histFile = tempFolder.newFile("hist2.json").toPath();
-		WatchlistManager wl = new WatchlistManager(wlFile, histFile);
+		WatchlistManager wl = new WatchlistManager(wlFile, histFile, new Gson());
 		wl.addWatchedRecipe("cut_ruby");
 		MarketWatcherService service = new MarketWatcherService(wl);
 
@@ -168,7 +169,7 @@ public class MarketWatcherTest
 		Assert.assertTrue(sDrop.getTriggeredAlerts().stream().anyMatch(a -> "WATCHED_LOSS".equals(a.getAlertType())));
 
 		// Verify persistence reload of watchlist & history
-		WatchlistManager reloaded = new WatchlistManager(wlFile, histFile);
+		WatchlistManager reloaded = new WatchlistManager(wlFile, histFile, new Gson());
 		Assert.assertTrue(reloaded.isRecipeWatched("cut_ruby"));
 		Assert.assertFalse(reloaded.getHistoryWindow("cut_ruby", 86400L, t0 + 300L).isEmpty());
 	}
@@ -178,7 +179,7 @@ public class MarketWatcherTest
 	{
 		Path wlFile = tempFolder.newFile("wl3.json").toPath();
 		Path histFile = tempFolder.newFile("hist3.json").toPath();
-		MarketWatcherService service = new MarketWatcherService(new WatchlistManager(wlFile, histFile));
+		MarketWatcherService service = new MarketWatcherService(new WatchlistManager(wlFile, histFile, new Gson()));
 
 		// Missing price must report UNAVAILABLE and not 0 GP fake profit
 		Map<Integer, ItemPrice> missingMap = new HashMap<>();

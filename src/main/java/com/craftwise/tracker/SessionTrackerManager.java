@@ -1,7 +1,6 @@
 package com.craftwise.tracker;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -77,22 +76,23 @@ public class SessionTrackerManager
 		}
 	}
 
-	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static final Type LIST_TYPE = new TypeToken<List<CraftingSessionRecord>>()
 	{
 	}.getType();
 
 	private final Path storageFile;
+	private final Gson gson;
 	private final List<CraftingSessionRecord> sessions = Collections.synchronizedList(new ArrayList<>());
 
-	public SessionTrackerManager()
+	public SessionTrackerManager(Gson gson)
 	{
-		this(Paths.get(System.getProperty("user.home"), ".runelite", "craftwise", "sessions.json"));
+		this(Paths.get(System.getProperty("user.home"), ".runelite", "craftwise", "sessions.json"), gson);
 	}
 
-	public SessionTrackerManager(Path storageFile)
+	public SessionTrackerManager(Path storageFile, Gson gson)
 	{
 		this.storageFile = storageFile;
+		this.gson = gson.newBuilder().setPrettyPrinting().create();
 		load();
 	}
 
@@ -106,7 +106,7 @@ public class SessionTrackerManager
 		try
 		{
 			String json = new String(Files.readAllBytes(storageFile), StandardCharsets.UTF_8);
-			List<CraftingSessionRecord> loaded = GSON.fromJson(json, LIST_TYPE);
+			List<CraftingSessionRecord> loaded = gson.fromJson(json, LIST_TYPE);
 			if (loaded != null)
 			{
 				sessions.addAll(loaded);
@@ -136,7 +136,7 @@ public class SessionTrackerManager
 			{
 				snapshot = new ArrayList<>(sessions);
 			}
-			Files.write(storageFile, GSON.toJson(snapshot).getBytes(StandardCharsets.UTF_8));
+			Files.write(storageFile, gson.toJson(snapshot).getBytes(StandardCharsets.UTF_8));
 		}
 		catch (IOException ex)
 		{

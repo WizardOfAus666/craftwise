@@ -3,6 +3,7 @@ package com.craftwise.api;
 import com.craftwise.api.ApiResponseHandler.TimeseriesData;
 import com.craftwise.api.ApiResponseHandler.WikiPageInfo;
 import com.craftwise.model.ItemPrice;
+import com.google.gson.Gson;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -72,7 +73,7 @@ public class ApiResponseAndCacheTest
 		Path tempFile = Files.createTempFile("craftwise-cache-test", ".json");
 		try
 		{
-			PriceCache writer = new PriceCache(tempFile);
+			PriceCache writer = new PriceCache(tempFile, new Gson());
 			writer.setStaleThresholdSec(60L);
 			Map<Integer, ItemPrice> map = Map.of(
 				ItemID.DIAMOND, ItemPrice.builder().itemId(ItemID.DIAMOND).highPrice(1900L).lowPrice(1850L).build()
@@ -82,7 +83,7 @@ public class ApiResponseAndCacheTest
 			Assert.assertFalse(writer.isStale(1030L));
 			Assert.assertTrue(writer.isStale(1200L));
 
-			PriceCache reader = new PriceCache(tempFile);
+			PriceCache reader = new PriceCache(tempFile, new Gson());
 			Assert.assertFalse(reader.isEmpty());
 			Assert.assertEquals(Long.valueOf(1900L), reader.getPrice(ItemID.DIAMOND).getHighPrice());
 		}

@@ -109,7 +109,7 @@ public class CraftingDataManager
 	private final CraftWiseConfig config;
 	private final WikiPriceClient wikiPriceClient;
 	private final WikiDataClient wikiDataClient;
-	private final Gson gson = new Gson();
+	private final Gson gson;
 
 	private final List<Runnable> changeListeners = new CopyOnWriteArrayList<>();
 	private final Map<Integer, CustomPriceOverride> customPrices = new ConcurrentHashMap<>();
@@ -133,11 +133,11 @@ public class CraftingDataManager
 	private volatile boolean includeQuestLocked = true;
 	private volatile boolean includeUnlockRequired = true;
 	private final AtomicBoolean refreshing = new AtomicBoolean(false);
-	private final SessionTrackerManager sessionTrackerManager = new SessionTrackerManager();
-	private final GoalManager goalManager = new GoalManager();
-	private final WatchlistManager watchlistManager = new WatchlistManager();
-	private final MarketWatcherService marketWatcherService = new MarketWatcherService(watchlistManager);
-	private final OwnedMaterialSnapshot ownedMaterialSnapshot = new OwnedMaterialSnapshot();
+	private final SessionTrackerManager sessionTrackerManager;
+	private final GoalManager goalManager;
+	private final WatchlistManager watchlistManager;
+	private final MarketWatcherService marketWatcherService;
+	private final OwnedMaterialSnapshot ownedMaterialSnapshot;
 	private volatile ScanResult latestMarketScan;
 	private volatile IntegratedMarketView latestIntegratedMarketView;
 	private volatile List<BankRecipeMatch> latestBankMatches = Collections.emptyList();
@@ -156,7 +156,8 @@ public class CraftingDataManager
 		ConfigManager configManager,
 		CraftWiseConfig config,
 		WikiPriceClient wikiPriceClient,
-		WikiDataClient wikiDataClient)
+		WikiDataClient wikiDataClient,
+		Gson gson)
 	{
 		this.client = client;
 		this.clientThread = clientThread;
@@ -165,6 +166,17 @@ public class CraftingDataManager
 		this.config = config;
 		this.wikiPriceClient = wikiPriceClient;
 		this.wikiDataClient = wikiDataClient;
+		if (gson == null)
+		{
+			throw new IllegalArgumentException("Gson must be provided via RuneLite @Inject.");
+		}
+		this.gson = gson;
+		Gson prettyGson = gson.newBuilder().setPrettyPrinting().create();
+		this.sessionTrackerManager = new SessionTrackerManager(prettyGson);
+		this.goalManager = new GoalManager(prettyGson);
+		this.watchlistManager = new WatchlistManager(prettyGson);
+		this.marketWatcherService = new MarketWatcherService(watchlistManager);
+		this.ownedMaterialSnapshot = new OwnedMaterialSnapshot(prettyGson);
 
 		PriceCache cache = wikiPriceClient != null ? wikiPriceClient.getPriceCache() : null;
 		if (cache != null && !cache.isEmpty())

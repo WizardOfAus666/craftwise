@@ -6,6 +6,7 @@ import com.craftwise.data.DataIntegrityChecker.IntegrityReport;
 import com.craftwise.tracker.GoalManager.CraftingGoal;
 import com.craftwise.tracker.SessionTrackerManager.CraftingSessionRecord;
 import com.craftwise.util.XPTable;
+import com.google.gson.Gson;
 import java.nio.file.Path;
 import org.junit.Assert;
 import org.junit.Rule;
@@ -21,7 +22,7 @@ public class TrackerPersistenceTest
 	public void testSessionTrackerPersistenceAndMath() throws Exception
 	{
 		Path file = tempFolder.newFile("sessions.json").toPath();
-		SessionTrackerManager mgr = new SessionTrackerManager(file);
+		SessionTrackerManager mgr = new SessionTrackerManager(file, new Gson());
 
 		CraftingSessionRecord rec = mgr.addSession(CraftingSessionRecord.builder()
 			.recipeId("cut_ruby")
@@ -41,7 +42,7 @@ public class TrackerPersistenceTest
 		Assert.assertEquals(45_000L, rec.getRealizedNetProfitGp());
 		Assert.assertEquals(5_000L, rec.getVarianceVsTheoreticalGp());
 
-		SessionTrackerManager reloaded = new SessionTrackerManager(file);
+		SessionTrackerManager reloaded = new SessionTrackerManager(file, new Gson());
 		Assert.assertEquals(1, reloaded.getSessions().size());
 		Assert.assertEquals(45_000L, reloaded.getTotalRealizedProfitGp());
 		Assert.assertEquals(10_000L, reloaded.getTotalTrackedXp());
@@ -53,14 +54,14 @@ public class TrackerPersistenceTest
 		reloaded.addSession(CraftingSessionRecord.builder().recipeId("cut_diamond").recipeName("Cut Diamond").itemsCrafted(5L).build());
 		Assert.assertEquals(2, reloaded.clearSessions());
 		Assert.assertEquals(0, reloaded.getSessions().size());
-		Assert.assertEquals(0, new SessionTrackerManager(file).getSessions().size());
+		Assert.assertEquals(0, new SessionTrackerManager(file, new Gson()).getSessions().size());
 	}
 
 	@Test
 	public void testGoalManagerPersistenceAndProgress() throws Exception
 	{
 		Path file = tempFolder.newFile("goals.json").toPath();
-		GoalManager gm = new GoalManager(file);
+		GoalManager gm = new GoalManager(file, new Gson());
 
 		CraftingGoal goal = gm.addGoal(CraftingGoal.builder()
 			.title("99 Crafting via Air Bstaff")
@@ -76,7 +77,7 @@ public class TrackerPersistenceTest
 		Assert.assertTrue(goal.getRemainingXp(XPTable.getXpForLevel(70)) > 12_000_000L);
 		Assert.assertEquals(100.0, goal.getProgressPercent(XPTable.getXpForLevel(99)), 0.01);
 
-		GoalManager reloaded = new GoalManager(file);
+		GoalManager reloaded = new GoalManager(file, new Gson());
 		Assert.assertEquals(1, reloaded.getGoals().size());
 		Assert.assertTrue(reloaded.toggleCompleted(goal.getId()));
 		Assert.assertTrue(reloaded.getGoals().get(0).isCompleted());

@@ -3,7 +3,6 @@ package com.craftwise.api;
 import com.craftwise.api.ApiResponseHandler.TimeseriesData;
 import com.craftwise.model.ItemPrice;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -14,8 +13,10 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.client.RuneLite;
 import org.slf4j.Logger;
@@ -37,7 +38,7 @@ public class PriceCache
 	private final Map<Integer, ItemPrice> mappingMetadata = new ConcurrentHashMap<>();
 	private final Map<String, CachedTimeseries> timeseriesCache = new ConcurrentHashMap<>();
 	private final Path cacheFile;
-	private final Gson gson = new GsonBuilder().create();
+	private final Gson gson;
 
 	private volatile long lastPriceUpdateEpochSec = 0L;
 	private volatile long lastMappingUpdateEpochSec = 0L;
@@ -61,14 +62,16 @@ public class PriceCache
 		Map<Integer, ItemPrice> prices;
 	}
 
-	public PriceCache()
+	@Inject
+	public PriceCache(Gson gson)
 	{
-		this(RuneLite.RUNELITE_DIR.toPath().resolve("craftwise").resolve("price-cache.json"));
+		this(RuneLite.RUNELITE_DIR.toPath().resolve("craftwise").resolve("price-cache.json"), gson);
 	}
 
-	public PriceCache(Path cacheFile)
+	public PriceCache(Path cacheFile, Gson gson)
 	{
 		this.cacheFile = cacheFile;
+		this.gson = Objects.requireNonNull(gson, "Gson must be provided via RuneLite @Inject.");
 		loadFromDisk();
 	}
 

@@ -35,8 +35,11 @@ public class WikiDataClient
 	@Inject
 	public WikiDataClient(OkHttpClient httpClient)
 	{
-		OkHttpClient base = httpClient != null ? httpClient : new OkHttpClient();
-		this.httpClient = base.newBuilder()
+		if (httpClient == null)
+		{
+			throw new IllegalArgumentException("OkHttpClient must be provided via RuneLite @Inject.");
+		}
+		this.httpClient = httpClient.newBuilder()
 			.connectTimeout(8, TimeUnit.SECONDS)
 			.readTimeout(12, TimeUnit.SECONDS)
 			.build();

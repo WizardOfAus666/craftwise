@@ -12,6 +12,7 @@ import com.craftwise.market.MarketWatcherService.AlertRuleConfig;
 import com.craftwise.market.MarketWatcherService.ScanResult;
 import com.craftwise.model.CraftingResult;
 import com.craftwise.model.ItemPrice;
+import com.google.gson.Gson;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
@@ -62,9 +63,9 @@ public class BankMarketIntegrationTest
 		Path histFile = tempFolder.newFile("hist.json").toPath();
 		Path manFile = tempFolder.newFile("man.json").toPath();
 
-		WatchlistManager wl = new WatchlistManager(wlFile, histFile);
+		WatchlistManager wl = new WatchlistManager(wlFile, histFile, new Gson());
 		MarketWatcherService watcher = new MarketWatcherService(wl);
-		OwnedMaterialSnapshot snapshot = new OwnedMaterialSnapshot(manFile);
+		OwnedMaterialSnapshot snapshot = new OwnedMaterialSnapshot(manFile, new Gson());
 
 		long t0 = 1_700_000_000L;
 		AlertRuleConfig rules = AlertRuleConfig.builder()

@@ -46,25 +46,25 @@ public class WikiPriceClient
 	@Inject
 	public WikiPriceClient(OkHttpClient httpClient, PriceCache priceCache)
 	{
-		OkHttpClient base = httpClient != null ? httpClient : new OkHttpClient();
-		this.httpClient = base.newBuilder()
-			.connectTimeout(8, TimeUnit.SECONDS)
-			.readTimeout(12, TimeUnit.SECONDS)
-			.writeTimeout(8, TimeUnit.SECONDS)
-			.build();
-		this.priceCache = priceCache != null ? priceCache : new PriceCache();
-		this.responseHandler = new ApiResponseHandler();
+		this(httpClient, priceCache, new ApiResponseHandler());
 	}
 
 	public WikiPriceClient(OkHttpClient httpClient, PriceCache priceCache, ApiResponseHandler responseHandler)
 	{
-		OkHttpClient base = httpClient != null ? httpClient : new OkHttpClient();
-		this.httpClient = base.newBuilder()
+		if (httpClient == null)
+		{
+			throw new IllegalArgumentException("OkHttpClient must be provided via RuneLite @Inject.");
+		}
+		if (priceCache == null)
+		{
+			throw new IllegalArgumentException("PriceCache must be provided.");
+		}
+		this.httpClient = httpClient.newBuilder()
 			.connectTimeout(8, TimeUnit.SECONDS)
 			.readTimeout(12, TimeUnit.SECONDS)
 			.writeTimeout(8, TimeUnit.SECONDS)
 			.build();
-		this.priceCache = priceCache != null ? priceCache : new PriceCache();
+		this.priceCache = priceCache;
 		this.responseHandler = responseHandler != null ? responseHandler : new ApiResponseHandler();
 	}
 

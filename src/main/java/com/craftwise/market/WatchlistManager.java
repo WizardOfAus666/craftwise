@@ -1,7 +1,6 @@
 package com.craftwise.market;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -82,29 +81,31 @@ public class WatchlistManager
 	private static final long MIN_SNAPSHOT_SPACING_SEC = 60L;
 	private static final long MAX_HISTORY_AGE_SEC = 30L * 86400L;
 
-	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static final Type HISTORY_TYPE = new TypeToken<Map<String, List<ProfitHistoryPoint>>>()
 	{
 	}.getType();
 
 	private final Path watchlistFile;
 	private final Path historyFile;
+	private final Gson gson;
 	private final Set<String> watchedRecipeIds = Collections.synchronizedSet(new LinkedHashSet<>());
 	private final Map<Integer, WatchedItemRecord> watchedItems = Collections.synchronizedMap(new LinkedHashMap<>());
 	private final Map<String, List<ProfitHistoryPoint>> historyByRecipeId = Collections.synchronizedMap(new LinkedHashMap<>());
 
-	public WatchlistManager()
+	public WatchlistManager(Gson gson)
 	{
 		this(
 			Paths.get(System.getProperty("user.home"), ".runelite", "craftwise", "watchlist.json"),
-			Paths.get(System.getProperty("user.home"), ".runelite", "craftwise", "profit_history.json")
+			Paths.get(System.getProperty("user.home"), ".runelite", "craftwise", "profit_history.json"),
+			gson
 		);
 	}
 
-	public WatchlistManager(Path watchlistFile, Path historyFile)
+	public WatchlistManager(Path watchlistFile, Path historyFile, Gson gson)
 	{
 		this.watchlistFile = watchlistFile;
 		this.historyFile = historyFile;
+		this.gson = gson.newBuilder().setPrettyPrinting().create();
 		load();
 	}
 
@@ -119,7 +120,7 @@ public class WatchlistManager
 			try
 			{
 				String json = new String(Files.readAllBytes(watchlistFile), StandardCharsets.UTF_8);
-				WatchlistState state = GSON.fromJson(json, WatchlistState.class);
+				WatchlistState state = gson.fromJson(json, WatchlistState.class);
 				if (state != null)
 				{
 					if (state.getRecipeIds() != null)
@@ -143,7 +144,7 @@ public class WatchlistManager
 			try
 			{
 				String json = new String(Files.readAllBytes(historyFile), StandardCharsets.UTF_8);
-				Map<String, List<ProfitHistoryPoint>> loaded = GSON.fromJson(json, HISTORY_TYPE);
+				Map<String, List<ProfitHistoryPoint>> loaded = gson.fromJson(json, HISTORY_TYPE);
 				if (loaded != null)
 				{
 					historyByRecipeId.putAll(loaded);
@@ -173,7 +174,7 @@ public class WatchlistManager
 					state = new WatchlistState(new LinkedHashSet<>(watchedRecipeIds), new LinkedHashMap<>(watchedItems));
 				}
 			}
-			Files.write(watchlistFile, GSON.toJson(state).getBytes(StandardCharsets.UTF_8));
+			Files.write(watchlistFile, gson.toJson(state).getBytes(StandardCharsets.UTF_8));
 		}
 		catch (IOException ex)
 		{
@@ -195,7 +196,7 @@ public class WatchlistManager
 			{
 				copy = new LinkedHashMap<>(historyByRecipeId);
 			}
-			Files.write(historyFile, GSON.toJson(copy).getBytes(StandardCharsets.UTF_8));
+			Files.write(historyFile, gson.toJson(copy).getBytes(StandardCharsets.UTF_8));
 		}
 		catch (IOException ex)
 		{

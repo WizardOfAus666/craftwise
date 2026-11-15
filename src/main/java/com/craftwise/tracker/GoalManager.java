@@ -2,7 +2,6 @@ package com.craftwise.tracker;
 
 import com.craftwise.util.XPTable;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -59,22 +58,23 @@ public class GoalManager
 		}
 	}
 
-	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static final Type LIST_TYPE = new TypeToken<List<CraftingGoal>>()
 	{
 	}.getType();
 
 	private final Path storageFile;
+	private final Gson gson;
 	private final List<CraftingGoal> goals = Collections.synchronizedList(new ArrayList<>());
 
-	public GoalManager()
+	public GoalManager(Gson gson)
 	{
-		this(Paths.get(System.getProperty("user.home"), ".runelite", "craftwise", "goals.json"));
+		this(Paths.get(System.getProperty("user.home"), ".runelite", "craftwise", "goals.json"), gson);
 	}
 
-	public GoalManager(Path storageFile)
+	public GoalManager(Path storageFile, Gson gson)
 	{
 		this.storageFile = storageFile;
+		this.gson = gson.newBuilder().setPrettyPrinting().create();
 		load();
 	}
 
@@ -88,7 +88,7 @@ public class GoalManager
 		try
 		{
 			String json = new String(Files.readAllBytes(storageFile), StandardCharsets.UTF_8);
-			List<CraftingGoal> loaded = GSON.fromJson(json, LIST_TYPE);
+			List<CraftingGoal> loaded = gson.fromJson(json, LIST_TYPE);
 			if (loaded != null)
 			{
 				goals.addAll(loaded);
@@ -118,7 +118,7 @@ public class GoalManager
 			{
 				snapshot = new ArrayList<>(goals);
 			}
-			Files.write(storageFile, GSON.toJson(snapshot).getBytes(StandardCharsets.UTF_8));
+			Files.write(storageFile, gson.toJson(snapshot).getBytes(StandardCharsets.UTF_8));
 		}
 		catch (IOException ex)
 		{
