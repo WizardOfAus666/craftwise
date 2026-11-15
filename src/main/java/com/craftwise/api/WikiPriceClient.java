@@ -32,7 +32,6 @@ public class WikiPriceClient
 		"CraftWise-RuneLite-Plugin/1.0.0 (OSRS Crafting Profit & Training Analyzer)";
 
 	private static final long MAPPING_TTL_SECONDS = 6L * 3600L;
-	private static final int MAX_RETRIES = 3;
 
 	private final OkHttpClient httpClient;
 	private final PriceCache priceCache;
@@ -246,83 +245,31 @@ public class WikiPriceClient
 
 	private String executeGetWithRetry(String url) throws IOException
 	{
-		IOException lastException = null;
-		long backoffMs = 400L;
+		Request request = new Request.Builder()
+			.url(url)
+			.header("User-Agent", USER_AGENT)
+			.header("Accept", "application/json")
+			.get()
+			.build();
 
-		for (int attempt = 1; attempt <= MAX_RETRIES; attempt++)
+		try (Response response = httpClient.newCall(request).execute())
 		{
-			Request request = new Request.Builder()
-				.url(url)
-				.header("User-Agent", USER_AGENT)
-				.header("Accept", "application/json")
-				.get()
-				.build();
-
-			try (Response response = httpClient.newCall(request).execute())
+			int code = response.code();
+			if (response.isSuccessful())
 			{
-				int code = response.code();
-				if (response.isSuccessful())
+				ResponseBody body = response.body();
+				if (body == null)
 				{
-					ResponseBody body = response.body();
-					if (body == null)
-					{
-						throw new IOException("Empty HTTP body from " + url);
-					}
-					return body.string();
+					throw new IOException("Empty HTTP body from " + url);
 				}
-
-				// Do not retry permanent 404/400 client errors (e.g. v2 -> v1 fallback)
-				if (code == 400 || code == 404)
-				{
-					throw new IOException("HTTP " + code + " for " + url);
-				}
-
-				if (code == 429)
-				{
-					String retryAfter = response.header("Retry-After");
-					long waitMs = backoffMs;
-					if (retryAfter != null)
-					{
-						try
-						{
-							waitMs = Math.min(5000L, Math.max(500L, Long.parseLong(retryAfter.trim()) * 1000L));
-						}
-						catch (NumberFormatException ignored)
-						{
-						}
-					}
-					lastException = new IOException("HTTP 429 rate-limited on " + url);
-					sleepQuietly(waitMs);
-					backoffMs = Math.min(3000L, backoffMs * 2L);
-					continue;
-				}
-
-				lastException = new IOException("HTTP " + code + " from " + url);
-			}
-			catch (IOException ex)
-			{
-				lastException = ex;
+				return body.string();
 			}
 
-			if (attempt < MAX_RETRIES)
+			if (code == 429)
 			{
-				sleepQuietly(backoffMs);
-				backoffMs = Math.min(3000L, backoffMs * 2L);
+				throw new IOException("HTTP 429 rate-limited on " + url);
 			}
-		}
-
-		throw lastException != null ? lastException : new IOException("Failed to fetch " + url);
-	}
-
-	private static void sleepQuietly(long millis)
-	{
-		try
-		{
-			Thread.sleep(millis);
-		}
-		catch (InterruptedException ex)
-		{
-			Thread.currentThread().interrupt();
+			throw new IOException("HTTP " + code + " for " + url);
 		}
 	}
 }
