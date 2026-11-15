@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
  */
 @PluginDescriptor(
 	name = "CraftWise",
+	internalName = "craftwise",
 	description = "OSRS Crafting training, profit/loss & Grand Exchange analysis tool powered by live OSRS Wiki prices",
 	tags = {
 		"crafting",
